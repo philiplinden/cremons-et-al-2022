@@ -2,7 +2,7 @@
 
 This repository is a reproduction of [_Software for Simulating Lunar Surface Hydration Measurements for Multispectral Lidar at 3 µm_](./Earth%20and%20Space%20Science%20-%202022%20-%20Cremons.pdf)[^1]
 using Python instead of Matlab. The goal is to reproduce the figures and results
-from the data provided by Cremons, et. al. with their paper.
+from the data published by Cremons, et. al that accompanied their paper.
 
 This work is licensed under a
 [Creative Commons Attribution 4.0 International License][cc-by].
