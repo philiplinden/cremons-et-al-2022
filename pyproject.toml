@@ -8,17 +8,19 @@ description = """\
     Zenodo, Jul. 01, 2022. doi: 10.5281/zenodo.6025377. \
     """
 requires-python = ">=3.8"
-keywords = ["python", "nasa", "desci"]
+keywords = ["python", "nasa", "desci", "simulation", "lunar"]
 authors = [
     {name = "Philip Linden", email = "phil@moondao.com"},
     {name = "Daniel R. Cremons"},
 ]
-license = "CC-BY 4.0"
+license = {text = "CC-BY 4.0"}
 dependencies = [
     "matplotlib",
+    "numpy",
+    "pint",
+    "scipy",
 ]
 
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
-
