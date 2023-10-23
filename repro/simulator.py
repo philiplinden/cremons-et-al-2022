@@ -74,6 +74,8 @@ def R(SSA, P, mu, mu0, B):
             r3 = (1 + B)P
             r4 = H(ω) * H₀(ω)
 
+    Equivalent to src/Hapke_Lidar_R_function.m
+
     Args:
         SSA (_type_): single-scattering albedo, aka ω
         P (float): scattering phase function
@@ -95,19 +97,19 @@ def R(SSA, P, mu, mu0, B):
             mu (float): cosine of emission angle
             mu0 (float): coside of incident angle
         '''
-        h1 = 1 - np.sqrt(1 - SSA)
-        h2 = 1 + np.sqrt(1 - SSA)
-        h3 = h1 / h2
-        h4 = np.log((1 + mu0) / mu0)
-        h5 = (h3 + ((1 - 2 * h3) * mu0) / 2) * h4
+        gamma = np.sqrt(1 - SSA)
+        r0 = (1 - gamma) / (1 + gamma)
+        
+        h1 = np.log((1 + mu0) / mu0)
+        h2 = (r0 + ((1 - 2 * r0) * mu0) / 2) * h1
 
-        H = (1 - SSA * mu0 * h5) ** -1
+        H = (1 - SSA * mu0 * h2) ** -1
 
-        h6 = np.log((1 + mu) / mu)
-        h7 = (1 - 2 * h3 * mu)
-        h8 = h3 + (h7 / 2) * h6
+        h3 = np.log((1 + mu) / mu)
+        h4 = (1 - 2 * r0 * mu)
+        h5 = r0 + h3 * (h4 / 2)
 
-        H0 = (1 - SSA * mu * h8) ** -1
+        H0 = (1 - SSA * mu * h5) ** -1
         return H, H0 
     
     H, H0 = Hfunc(SSA, mu, mu0)
@@ -129,6 +131,9 @@ def Hapke(Refl, WLS, P=0.15, emission_angle=0, incident_angle=30, phase_angle=30
 
     Hapke, B. (2012). Theory of reflectance and emittance spectroscopy (2nd ed.).
         Cambridge University Press.
+
+    Equivalent to src/Hapke_Lidar_SSA_function.m
+    Default parameter values replicate src/Hapke_Inverse_Function_Passive.m
 
     Args:
         R (array[float]): Bidirectional reflectance, see Equation 1.
