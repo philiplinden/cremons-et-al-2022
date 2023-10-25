@@ -1,17 +1,22 @@
+"""main
+
+This module executes the simulation and runs the plotting
+functions. It emulates src/Hydrated_Regolith_Spectra_Generator_and_Retrieval.m
+"""
 from matplotlib import pyplot as plt
 import numpy as np
-from pprint import pprint as print
+from pprint import pprint
 
-from simulator import Hapke, get_sample_grid
+from .simulator import Hapke, get_sample_grid
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     WLS = get_sample_grid()
-    Refl = np.array([np.random.randn()*x for x in WLS])
+    Refl = np.array([np.random.randn() * x for x in WLS])
     R = Hapke(Refl, WLS)
-    print(WLS)
-    print(Refl)
-    print(R)
+    pprint(WLS)
+    pprint(Refl)
+    pprint(R)
     plt.figure()
-    plt.plot(WLS,Refl,WLS,R)
+    plt.plot(WLS, Refl, WLS, R)
     plt.show()

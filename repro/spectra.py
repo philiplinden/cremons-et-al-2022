@@ -1,3 +1,8 @@
+"""spectra
+
+This module defines classes that represent spectra for each regolith type.
+"""
+
 from dataclasses import dataclass
 from typing import Tuple
 
@@ -12,9 +17,10 @@ class Endmember:
 
 
 class HydratedMorbGlass(Endmember):
-    ''' Hydrated mid-ocean-ridge basalt (MORB) glass '''
-    sample_label = ''
-    spectrum_label = 'MORB D38A'
+    """Hydrated mid-ocean-ridge basalt (MORB) glass"""
+
+    sample_label = ""
+    spectrum_label = "MORB D38A"
     density = 2.8
     grain_size = 69e-6
 
