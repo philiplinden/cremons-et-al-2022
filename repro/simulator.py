@@ -67,7 +67,7 @@ def backscattering(h, g):
     return 1 / (1 + (1 / h) * np.tan(g / 2))
 
 
-def R(SSA, P, mu, mu0, B):
+def bidirectional_reflectance(SSA, P, mu, mu0, B):
     """Bidirectional reflectance, see Equation 1.
 
         R = (ω/4) (μ₀ / (μ + μ₀)) {(1 + B)P + H(ω)H₀(ω) - 1}
@@ -95,7 +95,7 @@ def R(SSA, P, mu, mu0, B):
         _type_: _description_
     """
 
-    def Hfunc(SSA, mu, mu0):
+    def h_func(SSA, mu, mu0):
         """Ambartsumian-Chandrasekhar H functions.
 
         Computed using the approximation from equation 8.57 from Hapke (2012).
@@ -120,7 +120,7 @@ def R(SSA, P, mu, mu0, B):
         H0 = (1 - SSA * mu * h5) ** -1
         return H, H0
 
-    H, H0 = Hfunc(SSA, mu, mu0)
+    H, H0 = h_func(SSA, mu, mu0)
 
     r1 = SSA / 4
     r2 = mu0 / (mu0 + mu)
@@ -129,7 +129,7 @@ def R(SSA, P, mu, mu0, B):
     return r1 * r2 * (r3 + r4 - 1)
 
 
-def Hapke(
+def hapke(
     Refl,
     WLS,
     P=0.15,
@@ -171,7 +171,8 @@ def Hapke(
     w = []
     for m, x in zip(Refl, WLS):
         w0 = 0.5  # initial guess, ω₀
-        y = partial(R, P=P, mu=mu, mu0=mu0, B=B)  # turn R() into the form y=f(x)
+        # turn bidrectional_reflectance() into the form y=f(x)
+        y = partial(bidirectional_reflectance, P=P, mu=mu, mu0=mu0, B=B)
         OLS = partial(
             ordinary_least_squares, y=y, yx=m
         )  # turn least squares into the form y=f(x)

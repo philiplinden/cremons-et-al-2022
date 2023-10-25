@@ -7,13 +7,13 @@ from matplotlib import pyplot as plt
 import numpy as np
 from pprint import pprint
 
-from .simulator import Hapke, get_sample_grid
+from .simulator import hapke, get_sample_grid
 
 
 if __name__ == "__main__":
     WLS = get_sample_grid()
     Refl = np.array([np.random.randn() * x for x in WLS])
-    R = Hapke(Refl, WLS)
+    R = hapke(Refl, WLS)
     pprint(WLS)
     pprint(Refl)
     pprint(R)
