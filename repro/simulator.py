@@ -1,3 +1,11 @@
+"""simulator
+
+This module contains the classes and functions that emulate the helper
+functions:
+    src/Hapke_Inverse_Function_Passive.m
+    src/Hapke_Lidar_R_Function.m
+    src/Hapke_Lidar_SSA_Function.m
+"""
 from functools import partial
 from typing import Any, Callable
 import numpy as np
@@ -28,34 +36,34 @@ def get_sample_grid(
 
 
 def ordinary_least_squares(x: Any, y: Callable, yx: Any):
-    '''Ordinary Least Squares Function.
+    """Ordinary Least Squares Function.
 
     y (Callable): The estimator function.
     x (Any): The argument to y.
     yx (Any): The observation. Must be the same type as the result of y.
-    '''
+    """
     return sum((y(x) - yx) ** 2)
 
 
 def angular_width(filling_factor=0.41):
-    '''Angular width parameter, see Equation 3.
+    """Angular width parameter, see Equation 3.
 
     Args:
         filling_factor (float, optional): Filling factor. Defaults to 0.41 for the
             lunar regolith (Bowell et al., 1989).
-    '''
+    """
     return (-3 / 8) * np.log(1 - filling_factor)
 
 
 def backscattering(h, g):
-    '''Backscattering function, see Equation 2.
+    """Backscattering function, see Equation 2.
 
     This describes the opposition effect.
 
     Args:
         h (float): angular width parameter.
         g (float): phase angle in radians.
-    '''
+    """
     return 1 / (1 + (1 / h) * np.tan(g / 2))
 
 
@@ -64,7 +72,7 @@ def R(SSA, P, mu, mu0, B):
 
         R = (ω/4) (μ₀ / (μ + μ₀)) {(1 + B)P + H(ω)H₀(ω) - 1}
 
-    This equation is HUGE so I broke it down into smaller terms for code readability.    
+    This equation is HUGE so I broke it down into smaller terms for code readability.
         let:
             R = r1 * r2 * (r3 + r4 - 1)
 
@@ -88,30 +96,30 @@ def R(SSA, P, mu, mu0, B):
     """
 
     def Hfunc(SSA, mu, mu0):
-        '''Ambartsumian-Chandrasekhar H functions.
-        
+        """Ambartsumian-Chandrasekhar H functions.
+
         Computed using the approximation from equation 8.57 from Hapke (2012).
-        
+
         Args:
             SSA (float): single-scattering albedo, aka ω
             mu (float): cosine of emission angle
             mu0 (float): coside of incident angle
-        '''
+        """
         gamma = np.sqrt(1 - SSA)
         r0 = (1 - gamma) / (1 + gamma)
-        
+
         h1 = np.log((1 + mu0) / mu0)
         h2 = (r0 + ((1 - 2 * r0) * mu0) / 2) * h1
 
         H = (1 - SSA * mu0 * h2) ** -1
 
         h3 = np.log((1 + mu) / mu)
-        h4 = (1 - 2 * r0 * mu)
+        h4 = 1 - 2 * r0 * mu
         h5 = r0 + h3 * (h4 / 2)
 
         H0 = (1 - SSA * mu * h5) ** -1
-        return H, H0 
-    
+        return H, H0
+
     H, H0 = Hfunc(SSA, mu, mu0)
 
     r1 = SSA / 4
@@ -121,10 +129,18 @@ def R(SSA, P, mu, mu0, B):
     return r1 * r2 * (r3 + r4 - 1)
 
 
-def Hapke(Refl, WLS, P=0.15, emission_angle=0, incident_angle=30, phase_angle=30, filling_factor=0.41):
+def Hapke(
+    Refl,
+    WLS,
+    P=0.15,
+    emission_angle=0,
+    incident_angle=30,
+    phase_angle=30,
+    filling_factor=0.41,
+):
     """Convert reflectance spectrum to single-scattering albedo (SSA)
 
-    Uses scipy.optimize.fmin (equivalent to MATLAB fminsearch) to minimize 
+    Uses scipy.optimize.fmin (equivalent to MATLAB fminsearch) to minimize
     ordinary least squares distance between SSA obtained from the supplied
     reflectance, R, and the SSA from the estimated reflectance at each
     sample point in WLS.
@@ -155,7 +171,20 @@ def Hapke(Refl, WLS, P=0.15, emission_angle=0, incident_angle=30, phase_angle=30
     w = []
     for m, x in zip(Refl, WLS):
         w0 = 0.5  # initial guess, ω₀
-        y = partial(R, P=P, mu=mu, mu0=mu0, B=B) # turn R() into the form y=f(x)
-        OLS = partial(ordinary_least_squares, y=y, yx=m) # turn least squares into the form y=f(x)
-        w.append(fminsearch(OLS, w0, args=x, disp=False, maxiter=10_000, maxfun=10_000, ftol=1e-7, xtol=1e-7))
+        y = partial(R, P=P, mu=mu, mu0=mu0, B=B)  # turn R() into the form y=f(x)
+        OLS = partial(
+            ordinary_least_squares, y=y, yx=m
+        )  # turn least squares into the form y=f(x)
+        w.append(
+            fminsearch(
+                OLS,
+                w0,
+                args=x,
+                disp=False,
+                maxiter=10_000,
+                maxfun=10_000,
+                ftol=1e-7,
+                xtol=1e-7,
+            )
+        )
     return np.concatenate(w)
