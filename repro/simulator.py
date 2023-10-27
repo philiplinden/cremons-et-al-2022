@@ -64,6 +64,42 @@ class Spectrum:
             filling_factor,
         )
 
+    spectrum_label = "MORB D38A"
+    density = 2.8
+    grain_size = 69E-6
+    abundance = Range(0.0, 0.3)
+
+
+class Regolith(Endmember):
+    density = 1.8
+    grain_size = 32e-6
+
+
+# SIMULATION TOOLS
+DEFAULT_WLS = np.linspace(1, 4, 601)
+
+
+class Spectrum:
+
+    def __init__(self, reflectance_data, species: Endmember, grid=DEFAULT_WLS):
+        self.reflectance = reflectance_data
+        self.species = species
+        self.grid = grid
+
+    def ssa(self, phasing,
+            emission_angle=0,
+            incident_angle=30,
+            phase_angle=30,
+            filling_factor=0.41):
+        return reflectance_to_ssa(
+            self.reflectance,
+            self.grid,
+            phasing,
+            emission_angle,
+            incident_angle,
+            phase_angle,
+            filling_factor,
+        )
 
 def ordinary_least_squares(x: Any, y: Callable, yx: Any):
     '''Ordinary Least Squares Function.
