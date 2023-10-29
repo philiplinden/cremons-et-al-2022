@@ -27,18 +27,15 @@ densMORB=2.8;
 dMORB=69E-6;
 
 %Low wavelength portion of MORB spectrum (<1.5 microns)
-
-Morb_D38A_LowLam=dir('Morb_D38A_Low_wavelength.txt');
-Morb_D38A_LowLam=Morb_D38A_LowLam.name;
-Morb_D38A_LowLam=readtable(Morb_D38A_LowLam);
+Morb_D38A_LowLam=readtable('../data/Morb_D38A_Low_wavelength.txt');
 Morb_D38A_LowLam=table2array(Morb_D38A_LowLam);
 
 WaterPPM=[1522,762,176,22]; %Total water measured from step-heating experiments
 
 %Load in MORB step-wise heating spectra
-MORB_D38A=dir('*.csv');
+MORB_D38A=dir('../data/*.csv');
 %Use the 650C spectrum for the lower wavelength portion of the spectrum
-MORB_D38A2=MORB_D38A(1).name;
+MORB_D38A2=fullfile(MORB_D38A(1).folder, MORB_D38A(1).name);
 MORB_D38A2=readtable(MORB_D38A2);
 MORB_D38A2=table2array(MORB_D38A2);
 MORB_D38A2(:,1)=1E4./MORB_D38A2(:,1); %convert from cm^-1 to microns
@@ -55,7 +52,7 @@ MORB_D38A_MidLam(:,2)=MORB_D38A_MidLam(:,2)./NormFactor;
 clear MORB_D38A2
 %Perform Normalization of MORB spectra at 650, 700, 750, 800 C
 for i=1:4
-MORB_D38A2=MORB_D38A(i).name; %start from 650 C spectrum
+MORB_D38A2=fullfile(MORB_D38A(i).folder, MORB_D38A(i).name); %start from 650 C spectrum
 MORB_D38A2=readtable(MORB_D38A2);
 MORB_D38A2=table2array(MORB_D38A2);
 MORB_D38A2(:,1)=1E4./MORB_D38A2(:,1); %convert from cm^-1 to microns
@@ -119,9 +116,7 @@ grid on
 densReg=1.8;
 dReg=32E-6;
 %Mare Mature Endmember
-MareMature=dir('Mare_70181_Spectra.txt');
-MareMature=MareMature.name;
-MareMature=readtable(MareMature);
+MareMature=readtable('../data/Mare_70181_Spectra.txt');
 MareMature=table2array(MareMature);
 MareMatureRaw=MareMature;
 %Remove Water and organics Signature by fitting a linear continuum between
@@ -136,9 +131,7 @@ PassiveMareMature=interp1(MareMature(:,1),MareMature(:,2),WLS);
 SSAMareMature=Hapke_Inverse_Function_Passive(PassiveMareMature,0.81,WLS);
 
 % Mare Immature Endmember
-MareImmature=dir('Mare_71061_Spectra.txt');
-MareImmature=MareImmature.name;
-MareImmature=readtable(MareImmature);
+MareImmature=readtable('../data/Mare_71061_Spectra.txt');
 MareImmature=table2array(MareImmature);
 MareImmatureRaw=MareImmature;
 %Remove Water and organics Signature
@@ -152,9 +145,7 @@ PassiveMareImmature=interp1(MareImmature(:,1),MareImmature(:,2),WLS);
 SSAMareImmature=Hapke_Inverse_Function_Passive(PassiveMareImmature,0.81,WLS);
 
 % Highlands Mature Endmember
-HighlandsMature=dir('Highlands_62231_Spectra.txt');
-HighlandsMature=HighlandsMature.name;
-HighlandsMature=readtable(HighlandsMature);
+HighlandsMature=readtable('../data/Highlands_62231_Spectra.txt');
 HighlandsMature=table2array(HighlandsMature);
 HighlandsMatureRaw=HighlandsMature;
 %Remove Water and organics Signature
@@ -168,9 +159,7 @@ PassiveHighlandsMature=interp1(HighlandsMature(:,1),HighlandsMature(:,2),WLS);
 SSAHighlandsMature=Hapke_Inverse_Function_Passive(PassiveHighlandsMature,0.81,WLS);
 
 % Highlands Immature Endmember
-HighlandsImmature=dir('Highlands_61221_Spectra.txt');
-HighlandsImmature=HighlandsImmature.name;
-HighlandsImmature=readtable(HighlandsImmature);
+HighlandsImmature=readtable('../data/Highlands_61221_Spectra.txt');
 HighlandsImmature=table2array(HighlandsImmature);
 HighlandsImmatureRaw=HighlandsImmature;
 %Remove Water and organics Signature
@@ -186,9 +175,7 @@ SSAHighlandsImmature=Hapke_Inverse_Function_Passive(PassiveHighlandsImmature,0.8
 %Apollo 15 Pyroxene Endmember
 densPyrox=3.2;
 dPyrox=70E-6;
-Apollo15_Pyroxene=dir('Apollo15Sample15555ReddishBrownPyroxeneB.txt');
-Apollo15_Pyroxene=Apollo15_Pyroxene.name;
-Apollo15_Pyroxene=readtable(Apollo15_Pyroxene);
+Apollo15_Pyroxene=readtable('../data/Apollo15Sample15555ReddishBrownPyroxeneB.txt');
 Apollo15_Pyroxene=table2array(Apollo15_Pyroxene);
 Apollo15_PyroxeneRaw=Apollo15_Pyroxene;
 %Remove Water and organics Signature
@@ -322,7 +309,6 @@ AreaFactor=0.8428; %This factor is the ratio between the mean grain size and den
 MeasuredWater(j,:)=MeasuredAbundances(1)/0.8428*WaterPPM(MorbSelection1)+MeasuredAbundances(2)/0.8428*WaterPPM(MorbSelection2); %retrieve two MORBs
 %Calculate total water error
 WatError(j,:) = MeasuredWater(j)-ActWatAmt(j);
-j
 end
 %% Plot the results showing scatter around 1:1 retrieval and histogram of total water error
 MareError=WatError(1:end/2);

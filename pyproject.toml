@@ -16,11 +16,14 @@ authors = [
 license = {text = "CC-BY 4.0"}
 dependencies = [
     "matplotlib",
-    "numpy",
-    "pint",
+    "numpy>=1.20.0",
     "scipy",
 ]
 
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff.format]
+# use single quotes for non-triple quote strings.
+quote-style = "single"
