@@ -10,19 +10,18 @@ description = """\
 requires-python = ">=3.8"
 keywords = ["python", "nasa", "desci", "simulation", "lunar"]
 authors = [
-    {name = "Philip Linden", email = "phil@moondao.com"},
-    {name = "Daniel R. Cremons"},
+  { name = "Philip Linden", email = "phil@moondao.com" },
+  { name = "Daniel R. Cremons" },
 ]
-license = {text = "CC-BY 4.0"}
-dependencies = [
-    "matplotlib",
-    "numpy>=1.20.0",
-    "scipy",
-]
+license = { text = "CC-BY 4.0" }
+dependencies = ["matplotlib", "notebook", "numpy>=1.20.0", "pandas", "scipy"]
 
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 80
 
 [tool.ruff.format]
 # use single quotes for non-triple quote strings.

@@ -9,12 +9,22 @@ This module emulates the behavior of the following MATLAB functions:
 from collections import namedtuple
 from functools import partial
 from typing import Any, Callable
+
 import numpy as np
 from numpy.typing import ArrayLike
+from pandas import Series
 from scipy.optimize import fmin
-
+from scipy.interpolate import interp1d
 
 HFunction = namedtuple('HFunction', 'H H0')
+
+
+def interpolate_series(data: Series, new_index: ArrayLike) -> Series:
+    x = data.index.values
+    y = data.values
+    f = interp1d(x, y, fill_value='extrapolate', bounds_error=False)
+    new_y = f(new_index)
+    return Series(data=new_y, index=new_index)
 
 
 def ordinary_least_squares(x: Any, y: Callable, yx: Any):
@@ -113,8 +123,7 @@ def bidirectional_reflectance(
 
 
 def reflectance_to_ssa(
-    Refl: ArrayLike,
-    WLS: ArrayLike,
+    Refl: Series,
     P: float = 0.15,
     emission_angle: float = 0,
     incident_angle: float = 30,
@@ -135,8 +144,7 @@ def reflectance_to_ssa(
     Default parameter values replicate src/Hapke_Inverse_Function_Passive.m
 
     Args:
-        R (ArrayLike): Bidirectional reflectance, see Equation 1.
-        WLS (ArrayLike): simulation sample grid?
+        R (Series): Bidirectional reflectance, see Equation 1.
         p (float, optional): Scattering phase function. Defaults to 0.15 for
             ansiotropic scattering on the modeled mean particle phase function
             for lunar soil (Goguen et al., 2010).
@@ -155,18 +163,18 @@ def reflectance_to_ssa(
     B = backscattering(h, g)
 
     w = []
-    for m, x in zip(Refl, WLS):
+    for index, value in Refl.items():
         w0 = 0.5  # initial guess, ω₀
         # turn bidrectional_reflectance() into the form y=f(x)
         y = partial(bidirectional_reflectance, P=P, mu=mu, mu0=mu0, B=B)
         OLS = partial(
-            ordinary_least_squares, y=y, yx=m
+            ordinary_least_squares, y=y, yx=value
         )  # turn least squares into the form y=f(x)
         w.append(
             fmin(
                 OLS,
                 w0,
-                args=x,
+                args=index,
                 disp=False,
                 maxiter=10_000,
                 maxfun=10_000,
@@ -174,4 +182,4 @@ def reflectance_to_ssa(
                 xtol=1e-7,
             )
         )
-    return np.concatenate(w)
+    return w
