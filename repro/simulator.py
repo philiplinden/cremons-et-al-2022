@@ -1,139 +1,67 @@
-'''simulator
+"""simulator
 
 This module emulates the behavior of the following MATLAB functions:
     src/Hapke_Inverse_Function_Passive.m
     src/Hapke_Lidar_R_Function.m
     src/Hapke_Lidar_SSA_Function.m
     src/Hydrated_Regolith_Spectra_Generator_and_Retrieval.m
-'''
+"""
 from collections import namedtuple
-from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, Callable
+
 import numpy as np
+from numpy.typing import ArrayLike
+from pandas import Series
 from scipy.optimize import fmin
+from scipy.interpolate import interp1d
+
+HFunction = namedtuple('HFunction', 'H H0')
 
 
-DEFAULT_WLS = np.linspace(1, 4, 601)
+def interpolate_series(data: Series, new_index: ArrayLike) -> Series:
+    x = data.index.values
+    y = data.values
+    f = interp1d(x, y, fill_value='extrapolate', bounds_error=False)
+    new_y = f(new_index)
+    return Series(data=new_y, index=new_index)
 
-Range = namedtuple('Range', 'min max')
-
-
-@dataclass
-class Endmember:
-    name: str
-    density: float
-    grain_size: float
-    water_ppm: float
-    abundance: Range = field(default_factory=Range)
-
-
-class HydratedMorbGlass(Endmember):
-    '''Hydrated mid-ocean-ridge basalt (MORB) glass'''
-
-    spectrum_label = "MORB D38A"
-    density = 2.8
-    grain_size = 69E-6
-    abundance = Range(0.0, 0.3)
-
-
-class Regolith(Endmember):
-    density = 1.8
-    grain_size = 32e-6
-
-
-class Spectrum:
-
-    def __init__(self, reflectance_data, species: Endmember, grid=DEFAULT_WLS):
-        self.reflectance = reflectance_data
-        self.species = species
-        self.grid = grid
-
-    def ssa(self, phasing,
-            emission_angle=0,
-            incident_angle=30,
-            phase_angle=30,
-            filling_factor=0.41):
-        return reflectance_to_ssa(
-            self.reflectance,
-            self.grid,
-            phasing,
-            emission_angle,
-            incident_angle,
-            phase_angle,
-            filling_factor,
-        )
-
-    spectrum_label = "MORB D38A"
-    density = 2.8
-    grain_size = 69E-6
-    abundance = Range(0.0, 0.3)
-
-
-class Regolith(Endmember):
-    density = 1.8
-    grain_size = 32e-6
-
-
-# SIMULATION TOOLS
-DEFAULT_WLS = np.linspace(1, 4, 601)
-
-
-class Spectrum:
-
-    def __init__(self, reflectance_data, species: Endmember, grid=DEFAULT_WLS):
-        self.reflectance = reflectance_data
-        self.species = species
-        self.grid = grid
-
-    def ssa(self, phasing,
-            emission_angle=0,
-            incident_angle=30,
-            phase_angle=30,
-            filling_factor=0.41):
-        return reflectance_to_ssa(
-            self.reflectance,
-            self.grid,
-            phasing,
-            emission_angle,
-            incident_angle,
-            phase_angle,
-            filling_factor,
-        )
 
 def ordinary_least_squares(x: Any, y: Callable, yx: Any):
-    '''Ordinary Least Squares Function.
+    """Ordinary Least Squares Function.
 
     y (Callable): The estimator function.
     x (Any): The argument to y.
     yx (Any): The observation. Must be the same type as the result of y.
-    '''
+    """
     return sum((y(x) - yx) ** 2)
 
 
 def angular_width(filling_factor):
-    '''Angular width parameter, see Equation 3.
+    """Angular width parameter, see Equation 3.
 
     Args:
         filling_factor (float, optional): Filling factor.
-    '''
+    """
     return (-3 / 8) * np.log(1 - filling_factor)
 
 
-def backscattering(h, g):
-    '''Backscattering function, see Equation 2.
+def backscattering(h: float, g: float) -> float:
+    """Backscattering function, see Equation 2.
 
     This describes the opposition effect.
 
     Args:
         h (float): angular width parameter.
         g (float): phase angle in radians.
-    '''
+    """
     return 1 / (1 + (1 / h) * np.tan(g / 2))
 
 
-def bidirectional_reflectance(SSA, P, mu, mu0, B):
-    '''Bidirectional reflectance, see Equation 1.
+def bidirectional_reflectance(
+    SSA: float, P: float, mu: float, mu0: float, B: float
+) -> float:
+    """Bidirectional reflectance, see Equation 1.
 
         R = (ω/4) (μ₀ / (μ + μ₀)) {(1 + B)P + H(ω)H₀(ω) - 1}
 
@@ -157,11 +85,11 @@ def bidirectional_reflectance(SSA, P, mu, mu0, B):
         B (float): backscattering function
 
     Returns:
-        _type_: _description_
-    '''
+        float: _description_
+    """
 
-    def h_func(SSA, mu, mu0):
-        '''Ambartsumian-Chandrasekhar H functions.
+    def h_func(SSA: float, mu: float, mu0: float) -> HFunction:
+        """Ambartsumian-Chandrasekhar H functions.
 
         Computed using the approximation from equation 8.57 from Hapke (2012).
 
@@ -169,7 +97,7 @@ def bidirectional_reflectance(SSA, P, mu, mu0, B):
             SSA (float): single-scattering albedo, aka ω
             mu (float): cosine of emission angle
             mu0 (float): coside of incident angle
-        '''
+        """
         gamma = np.sqrt(1 - SSA)
         r0 = (1 - gamma) / (1 + gamma)
 
@@ -183,7 +111,7 @@ def bidirectional_reflectance(SSA, P, mu, mu0, B):
         h5 = r0 + h3 * (h4 / 2)
 
         H0 = (1 - SSA * mu * h5) ** -1
-        return H, H0
+        return HFunction(H, H0)
 
     H, H0 = h_func(SSA, mu, mu0)
 
@@ -195,30 +123,28 @@ def bidirectional_reflectance(SSA, P, mu, mu0, B):
 
 
 def reflectance_to_ssa(
-    Refl,
-    WLS,
-    P=0.15,
-    emission_angle=0,
-    incident_angle=30,
-    phase_angle=30,
-    filling_factor=0.41,
+    Refl: Series,
+    P: float = 0.15,
+    emission_angle: float = 0,
+    incident_angle: float = 30,
+    phase_angle: float = 30,
+    filling_factor: float = 0.41,
 ):
-    '''Convert reflectance spectrum to single-scattering albedo (SSA)
+    """Convert reflectance spectrum to single-scattering albedo (SSA)
 
     Uses scipy.optimize.fmin (equivalent to MATLAB fminsearch) to minimize
     ordinary least squares distance between SSA obtained from the supplied
     reflectance, R, and the SSA from the estimated reflectance at each
     sample point in WLS.
 
-    Hapke, B. (2012). Theory of reflectance and emittance spectroscopy (2nd ed.).
-        Cambridge University Press.
+    Hapke, B. (2012). Theory of reflectance and emittance spectroscopy
+        (2nd ed.). Cambridge University Press.
 
     Equivalent to src/Hapke_Lidar_SSA_function.m
     Default parameter values replicate src/Hapke_Inverse_Function_Passive.m
 
     Args:
-        R (array[float]): Bidirectional reflectance, see Equation 1.
-        WLS: simulation sample grid?
+        R (Series): Bidirectional reflectance, see Equation 1.
         p (float, optional): Scattering phase function. Defaults to 0.15 for
             ansiotropic scattering on the modeled mean particle phase function
             for lunar soil (Goguen et al., 2010).
@@ -229,7 +155,7 @@ def reflectance_to_ssa(
         phase_angle (float, optional): Phase angle in degrees. Defaults to 30.
         filling_factor (float, optional: Particle filling factor.
             Defaults to 0.41.
-    '''
+    """
     mu = np.cos(np.deg2rad(emission_angle))
     mu0 = np.cos(np.deg2rad(incident_angle))
     g = np.deg2rad(phase_angle)
@@ -237,18 +163,18 @@ def reflectance_to_ssa(
     B = backscattering(h, g)
 
     w = []
-    for m, x in zip(Refl, WLS):
+    for index, value in Refl.items():
         w0 = 0.5  # initial guess, ω₀
         # turn bidrectional_reflectance() into the form y=f(x)
         y = partial(bidirectional_reflectance, P=P, mu=mu, mu0=mu0, B=B)
         OLS = partial(
-            ordinary_least_squares, y=y, yx=m
+            ordinary_least_squares, y=y, yx=value
         )  # turn least squares into the form y=f(x)
         w.append(
             fmin(
                 OLS,
                 w0,
-                args=x,
+                args=index,
                 disp=False,
                 maxiter=10_000,
                 maxfun=10_000,
@@ -256,4 +182,4 @@ def reflectance_to_ssa(
                 xtol=1e-7,
             )
         )
-    return np.concatenate(w)
+    return w
