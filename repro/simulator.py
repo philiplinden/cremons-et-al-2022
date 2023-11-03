@@ -8,7 +8,7 @@ This module emulates the behavior of the following MATLAB functions:
 """
 from collections import namedtuple
 from functools import partial
-from typing import Any, Callable
+from typing import Callable
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -27,12 +27,12 @@ def interpolate_series(data: Series, new_index: ArrayLike) -> Series:
     return Series(data=new_y, index=new_index)
 
 
-def ordinary_least_squares(x: Any, y: Callable, yx: Any):
+def ordinary_least_squares(x: float, y: Callable, yx: float) -> float:
     """Ordinary Least Squares Function.
 
     y (Callable): The estimator function.
-    x (Any): The argument to y.
-    yx (Any): The observation. Must be the same type as the result of y.
+    x (float): The argument to y.
+    yx (float): The observation. Must be the same type as the result of y.
     """
     return sum((y(x) - yx) ** 2)
 
@@ -61,7 +61,9 @@ def backscattering(h: float, g: float) -> float:
 def bidirectional_reflectance(
     SSA: float, P: float, mu: float, mu0: float, B: float
 ) -> float:
-    """Bidirectional reflectance, see Equation 1.
+    """Estimate bidirectional reflectance from single-scattering albedo.
+    
+    see Equation 1 in the manuscript:
 
         R = (ω/4) (μ₀ / (μ + μ₀)) {(1 + B)P + H(ω)H₀(ω) - 1}
 
@@ -85,7 +87,7 @@ def bidirectional_reflectance(
         B (float): backscattering function
 
     Returns:
-        float: _description_
+        float: bidrectional reflectance
     """
 
     def h_func(SSA: float, mu: float, mu0: float) -> HFunction:
@@ -123,14 +125,14 @@ def bidirectional_reflectance(
 
 
 def reflectance_to_ssa(
-    Refl: Series,
-    P: float = 0.15,
+    reflectance: Series,
+    asymmetry_factor: float = 0.81,
     emission_angle: float = 0,
     incident_angle: float = 30,
     phase_angle: float = 30,
     filling_factor: float = 0.41,
 ):
-    """Convert reflectance spectrum to single-scattering albedo (SSA)
+    """Estimate single-scattering albedo (SSA) from reflectance
 
     Uses scipy.optimize.fmin (equivalent to MATLAB fminsearch) to minimize
     ordinary least squares distance between SSA obtained from the supplied
@@ -144,10 +146,8 @@ def reflectance_to_ssa(
     Default parameter values replicate src/Hapke_Inverse_Function_Passive.m
 
     Args:
-        R (Series): Bidirectional reflectance, see Equation 1.
-        p (float, optional): Scattering phase function. Defaults to 0.15 for
-            ansiotropic scattering on the modeled mean particle phase function
-            for lunar soil (Goguen et al., 2010).
+        reflectance (Series): Bidirectional reflectance, R. see Equation 1.
+        asymmetry_factor (float, optional): Scattering asymmetry factor, p.
         emission_angle (float, optional): Emission angle in degrees.
             Defaults to 0.
         incident_angle (float, optional): Incident angle in degrees.
@@ -163,13 +163,18 @@ def reflectance_to_ssa(
     B = backscattering(h, g)
 
     w = []
-    for index, value in Refl.items():
+    for index, value in reflectance.items():
         w0 = 0.5  # initial guess, ω₀
         # turn bidrectional_reflectance() into the form y=f(x)
-        y = partial(bidirectional_reflectance, P=P, mu=mu, mu0=mu0, B=B)
+        y = partial(
+            bidirectional_reflectance, P=asymmetry_factor, mu=mu, mu0=mu0, B=B
+        )
+
+        # formulate ordinary least squares between estimated reflectance, y
+        # and observed reflectance, yx, and arrange into the form y=f(x)
         OLS = partial(
             ordinary_least_squares, y=y, yx=value
-        )  # turn least squares into the form y=f(x)
+        )
         w.append(
             fmin(
                 OLS,
