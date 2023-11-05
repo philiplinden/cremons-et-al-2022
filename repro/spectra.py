@@ -5,7 +5,7 @@ Definitions of end member mixtures and their spectra.
 from collections import namedtuple
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 import numpy as np
 import pandas as pd
@@ -57,22 +57,21 @@ class Mixture:
     end_members: List[Endmember] = field(default_factory=list)
 
 
-def spectrum_from_file(path: Path, name='response') -> Series:
+def spectrum_from_file(
+    path: Path, name='reflectance', header=None, delimiter=',',
+) -> Series:
     spectrum = pd.read_csv(
         path,
         index_col=0,
-        delimiter=',',
-        header=None,
+        header=header,
+        delimiter=delimiter,
         names=['wavelength', name],
     )
-    # since we converted frequency to wavelength, need to resort data
-    spectrum.sort_index()
     return spectrum.squeeze()
 
 
 def get_normalization_factor(data: Series, normalization_index: float) -> float:
-    """get value at the index closest to the desired normalization index
-    """
+    """get value at the index closest to the desired normalization index"""
     wavelength = data.index.values
     norm_index = np.argmin(abs(wavelength - normalization_index))
     return data.iloc[norm_index]

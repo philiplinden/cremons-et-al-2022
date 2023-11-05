@@ -14,7 +14,7 @@ authors = [
   { name = "Daniel R. Cremons" },
 ]
 license = { text = "CC-BY 4.0" }
-dependencies = ["matplotlib", "notebook", "numpy>=1.20.0", "pandas", "scipy"]
+dependencies = ["notebook", "numpy>=1.20.0", "pandas", "scipy"]
 
 [build-system]
 requires = ["setuptools"]
