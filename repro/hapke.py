@@ -74,7 +74,7 @@ def reflectance_from_ssa(
     Equivalent to src/Hapke_Lidar_R_function.m
 
     Args:
-        SSA (_type_): single-scattering albedo, aka ω
+        SSA (float): single-scattering albedo, aka ω
         P (float): scattering phase function
         mu (float): cosine of emission angle
         mu0 (float): cosine of incident angle
@@ -148,14 +148,14 @@ def ssa_from_reflectance(
         reflectance (float): Bidirectional reflectance, R. see Equation 1.
         wavelength (float): Wavelength in microns.
         asymmetry_factor (float, optional): Scattering asymmetry factor, p.
-        emission_angle (float, optional): Emission angle in degrees.
+        emission_angle (float, optional): Emission angle, μ, in degrees.
             Defaults to 0.
-        incident_angle (float, optional): Incident angle in degrees.
+        incident_angle (float, optional): Incident angle, μ₀, in degrees.
             Defaults to 30.
-        phase_angle (float, optional): Phase angle in degrees. Defaults to 30.
-        filling_factor (float, optional): Particle filling factor.
+        phase_angle (float, optional): Phase angle, g, in degrees. Defaults to 30.
+        filling_factor (float, optional): Particle filling factor, ϕ.
             Defaults to 0.41.
-        initial_guess (float, optional): initial guess of SSA, ω₀
+        initial_guess (float, optional): initial guess of SSA, ω₀.
     """
     mu = np.cos(np.deg2rad(emission_angle))
     mu0 = np.cos(np.deg2rad(incident_angle))
