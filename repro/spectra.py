@@ -5,11 +5,13 @@ Definitions of end member mixtures and their spectra.
 from collections import namedtuple
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 import numpy as np
+from numpy.typing import ArrayLike
 import pandas as pd
 from pandas import Series
+from scipy.interpolate import interp1d
 
 Range = namedtuple('Range', ['min', 'max'])
 
@@ -75,3 +77,11 @@ def get_normalization_factor(data: Series, normalization_index: float) -> float:
     wavelength = data.index.values
     norm_index = np.argmin(abs(wavelength - normalization_index))
     return data.iloc[norm_index]
+
+
+def interpolate_series(data: Series, new_index: ArrayLike) -> Series:
+    x = data.index.values
+    y = data.values
+    f = interp1d(x, y, fill_value='extrapolate', bounds_error=False)
+    new_y = f(new_index)
+    return Series(data=new_y, index=new_index)

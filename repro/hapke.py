@@ -1,4 +1,5 @@
-"""simulator
+"""hapke
+
 
 This module emulates the behavior of the following MATLAB functions:
     src/Hapke_Inverse_Function_Passive.m
@@ -9,22 +10,11 @@ This module emulates the behavior of the following MATLAB functions:
 from collections import namedtuple
 from functools import partial
 from typing import Callable
-
 import numpy as np
-from numpy.typing import ArrayLike
 from pandas import Series
 from scipy.optimize import fmin
-from scipy.interpolate import interp1d
 
 HFunction = namedtuple('HFunction', 'H H0')
-
-
-def interpolate_series(data: Series, new_index: ArrayLike) -> Series:
-    x = data.index.values
-    y = data.values
-    f = interp1d(x, y, fill_value='extrapolate', bounds_error=False)
-    new_y = f(new_index)
-    return Series(data=new_y, index=new_index)
 
 
 def ordinary_least_squares(x: float, y: Callable, yx: float) -> float:
@@ -134,6 +124,11 @@ def reflectance_to_ssa(
 ):
     """Estimate single-scattering albedo (SSA) from reflectance
 
+    TLDR; uses ordinary least squares to fit an SSA that produces the observed
+    reflectance when the SSA is fed back through the Hapke model.
+    
+    Equivalent to src/Hapke_Lidar_SSA_function.m
+
     Uses scipy.optimize.fmin (equivalent to MATLAB fminsearch) to minimize
     ordinary least squares distance between SSA obtained from the supplied
     reflectance, R, and the SSA from the estimated reflectance at each
@@ -142,7 +137,6 @@ def reflectance_to_ssa(
     Hapke, B. (2012). Theory of reflectance and emittance spectroscopy
         (2nd ed.). Cambridge University Press.
 
-    Equivalent to src/Hapke_Lidar_SSA_function.m
     Default parameter values replicate src/Hapke_Inverse_Function_Passive.m
 
     Args:
@@ -164,7 +158,8 @@ def reflectance_to_ssa(
 
     w = []
     for index, value in reflectance.items():
-        w0 = 0.5  # initial guess, ω₀
+        w0 = 0.5  # initial guess of SSA, ω₀
+
         # turn bidrectional_reflectance() into the form y=f(x)
         y = partial(
             bidirectional_reflectance, P=asymmetry_factor, mu=mu, mu0=mu0, B=B
