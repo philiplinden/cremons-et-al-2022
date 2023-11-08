@@ -4,6 +4,10 @@ This repository is a reproduction of [_Software for Simulating Lunar Surface Hyd
 using Python instead of Matlab. The goal is to reproduce the figures and results
 from the data published by Cremons, et. al that accompanied their paper.
 
+Reproduced figures and commentary are found in [repro/results.ipynb](repro/results.ipynb)
+as a Jupyter Notebook running Python 3. Details about the code and environment
+are found in [pyproject.toml](pyproject.toml)
+
 This work is licensed under a
 [Creative Commons Attribution 4.0 International License][cc-by].
 
