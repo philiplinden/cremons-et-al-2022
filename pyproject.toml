@@ -7,14 +7,20 @@ description = """\
     Measurements for Multispectral Lidar at 3 µm”. \
     Zenodo, Jul. 01, 2022. doi: 10.5281/zenodo.6025377. \
     """
-requires-python = ">=3.8"
+requires-python = "3.11"
 keywords = ["python", "nasa", "desci", "simulation", "lunar"]
 authors = [
   { name = "Philip Linden", email = "phil@moondao.com" },
   { name = "Daniel R. Cremons" },
 ]
 license = { text = "CC-BY 4.0" }
-dependencies = ["notebook", "numpy>=1.20.0", "pandas", "scipy", "matplotlib"]
+dependencies = [
+  "notebook==7.0.6",
+  "numpy>=1.20.0",
+  "pandas==2.1.2",
+  "scipy==1.11.3",
+  "matplotlib==3.8.1"
+]
 
 [build-system]
 requires = ["setuptools"]
