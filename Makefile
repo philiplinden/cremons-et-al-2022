@@ -1,6 +1,6 @@
 REGISTRY ?= ghcr.io/philiplinden
 IMAGE ?= cremons-et-al-2022
-TAG ?= test
+TAG ?= main
 
 build:
 	docker build . -t  $(REGISTRY)/$(IMAGE):$(TAG)

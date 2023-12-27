@@ -6,7 +6,19 @@ from the data published by Cremons, et. al that accompanied their paper.
 
 Reproduced figures and commentary are found in [repro/results.ipynb](repro/results.ipynb)
 as a Jupyter Notebook running Python 3. Details about the code and environment
-are found in [pyproject.toml](pyproject.toml)
+are found in [pyproject.toml](pyproject.toml). The reproduction can be produced
+using a docker image prepared from this repository.
+
+```shell
+# pull the image (bound to `make pull`)
+docker pull ghcr.io/philiplinden/cremons-et-al-2022:main
+
+# generate the plots (bound to `make run`)
+docker run -v /home/phil/repos/philiplinden/cremons-et-al-2022:"/opt" ghcr.io/philiplinden/cremons-et-al-2022:main repro/main.py
+
+# or run this on Bacalhau.org (bound to `make bacalhau`)
+bacalhau docker run ghcr.io/philiplinden/cremons-et-al-2022:main repro/main.py
+```
 
 This work is licensed under a
 [Creative Commons Attribution 4.0 International License][cc-by].
