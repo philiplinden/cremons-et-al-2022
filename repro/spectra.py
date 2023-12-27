@@ -6,7 +6,6 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
-from stat import FILE_ATTRIBUTE_OFFLINE
 from typing import List
 
 import numpy as np
@@ -14,6 +13,9 @@ from numpy.typing import ArrayLike
 import pandas as pd
 from pandas import DataFrame, Series
 from scipy.interpolate import interp1d
+
+from base import log, spectrum_from_file
+
 
 Range = namedtuple('Range', ['min', 'max'])
 
@@ -61,30 +63,17 @@ class Mixture:
     end_members: List[Endmember] = field(default_factory=list)
 
 
-def spectrum_from_file(
-    path: Path,
-    name='reflectance',
-    header=None,
-    delimiter=',',
-) -> Series:
-    spectrum = pd.read_csv(
-        path,
-        index_col=0,
-        header=header,
-        delimiter=delimiter,
-        names=['wavelength', name],
-    )
-    return spectrum.squeeze()
-
-
-def get_normalization_factor(data: Series, normalization_index: float) -> float:
+def get_normalization_factor(data: Series,
+                             normalization_index: float) -> float:
     """get value at the index closest to the desired normalization index"""
+    log.info(f'Normalizing {data.name} to {normalization_index} µm')
     wavelength = data.index.values
     norm_index = np.argmin(abs(wavelength - normalization_index))
     return data.iloc[norm_index]
 
 
 def interpolate_along_series(data: Series, new_index: ArrayLike) -> Series:
+    log.info(f'Interpolating {data.name}')
     x = data.index.values
     y = data.values
     f = interp1d(x, y, fill_value='extrapolate', bounds_error=False)
@@ -92,9 +81,27 @@ def interpolate_along_series(data: Series, new_index: ArrayLike) -> Series:
     return Series(data=new_y, index=new_index)
 
 
-def interpolate_hydration_levels(
-    ssa: DataFrame, real_levels: List[int], interp_levels: List[int]
-) -> DataFrame:
+def interpolate_spectra(simple_spectra: pd.DataFrame,
+                        min_wavelength=1,
+                        max_wavelength=4,
+                        intervals=601):
+    log.info(f'Interpolating {len(simple_spectra.columns)} spectra over '
+              f'{intervals} intervals between {min_wavelength} µm and '
+              f'{max_wavelength} µm')
+    # define wavelength range and spacing for simulations as
+    # 1-4 micron at 5nm intervals
+    WLS = np.linspace(min_wavelength, max_wavelength, intervals)
+
+    # interpolate along our sampling grid of interest
+    interpolated_spectra = simple_spectra.apply(interpolate_along_series,
+                                                args=[WLS],
+                                                axis=0)
+
+    return interpolated_spectra
+
+
+def interpolate_hydration_levels(ssa: DataFrame, real_levels: List[int],
+                                 interp_levels: List[int]) -> DataFrame:
     """Interpolate across give hydration spectra at new hydration levels.
 
     For each index in the given data:
@@ -115,12 +122,13 @@ def interpolate_hydration_levels(
     Returns:
         DataFrame: DataFrame from interpolating "across" the input DF.
     """
+
     def ssa_to_espat(x):
-        return (1-x)/x
+        return (1 - x) / x
 
     def espat_to_ssa(x):
-        return 1/(x+1)
-        
+        return 1 / (x + 1)
+
     def linear_fit(y_vals, x_vals):
         """y=mx+b"""
         fit_coefficients = np.polyfit(x_vals, y_vals, deg=1)
@@ -129,19 +137,20 @@ def interpolate_hydration_levels(
         return pd.Series((m, b), index=['m', 'b'])
 
     # convert SSA to ESPAT values
+    log.info('Converting SSA to ESPAT via interpolation')
     espat = ssa.apply(ssa_to_espat)
 
-    # apply linear for each row index to get coefficients
+    # apply linear fit for each row index to get coefficients
+    log.info('Applying linear fit')
     fit_func = partial(linear_fit, x_vals=real_levels)
     fit_coeffs = espat.apply(fit_func, axis=1)
-    
-    # apply the coefficients at each row index
-    interp_espat = fit_coeffs.apply(
-        lambda w: Series(
-            w.m * np.array(interp_levels) + w.b,
-            index=interp_levels),
-        axis=1
-    )
 
+    # apply the coefficients at each row index
+    log.info('Applying fit coefficients at each wavelength')
+    interp_espat = fit_coeffs.apply(lambda w: Series(
+        w.m * np.array(interp_levels) + w.b, index=interp_levels),
+                                    axis=1)
+
+    log.info('Converting ESPAT back to SSA')
     # # convert back to SSA
     return interp_espat.apply(espat_to_ssa)

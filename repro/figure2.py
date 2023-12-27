@@ -1,19 +1,19 @@
-# external modules
 from functools import partial
+
+# external modules
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-from pathlib import Path
 
-# local module for working with spectral data
-import spectra
-# local module for hapke model
-import hapke
+import base
+from base import log, EXPERIMENT_WATER_PPM
+import spectra  # local module for working with spectral data
+import hapke  # local module for hapke model
 
 
-def estimate_hydrated_spectra(interpolated_spectra, water_ppm,
-                              hydration_levels):
-
+def estimate_hydrated_spectra(interpolated_spectra,
+                              hydration_levels, water_ppm = EXPERIMENT_WATER_PPM):
+    log.info(f'Estimating SSA from reflectance using Hapke method')
     hapke_model = partial(hapke.ssa_from_reflectance,
                           asymmetry_factor=0.81,
                           emission_angle=0,
@@ -23,6 +23,7 @@ def estimate_hydrated_spectra(interpolated_spectra, water_ppm,
                           initial_guess=0.5)
     ssa_MORB = pd.DataFrame()
     for ppm in interpolated_spectra:
+        log.info(f'Applying Hapke function to hydration level {ppm}')
         ssa_MORB[ppm] = interpolated_spectra[ppm].apply(hapke_model)
 
     interpolated_hydration_MORB = spectra.interpolate_hydration_levels(
@@ -32,7 +33,7 @@ def estimate_hydrated_spectra(interpolated_spectra, water_ppm,
 
 
 def make_figure(interpolated_hydration_MORB, hydration_levels, show=False):
-
+    log.info('Building Figure 2...')
     subset_hydration_levels = hydration_levels[::100]
 
     fig, axes = plt.subplots(figsize=(10, 6), nrows=1, ncols=1)
@@ -47,9 +48,9 @@ def make_figure(interpolated_hydration_MORB, hydration_levels, show=False):
         color=plt.cm.viridis(np.linspace(0, 1, len(subset_hydration_levels))),
         linewidth=1,
     )
-
-    fig.savefig('Figure2.png')
-
+    figfile = 'repro/Figure2.png'
+    fig.savefig(figfile)
+    log.info(f'Saved {figfile}')
     if show:
         plt.show()
 
@@ -61,12 +62,12 @@ def main():
     water_ppm = [1522, 762, 176, 22]
 
     (endmember_spectra, heated_MORB_spectra,
-     MORB_D38A_LowLam) = figure1.import_spectral_data()
+     MORB_D38A_LowLam) = base.import_spectral_data()
 
     simple_spectra = figure1.simplify_spectra(heated_MORB_spectra,
                                               MORB_D38A_LowLam)
 
-    interpolated_spectra = figure1.interpolate_spectra(simple_spectra)
+    interpolated_spectra = spectra.interpolate_spectra(simple_spectra)
 
     # set the hydration levels to interpolate across
     hydration_levels = np.linspace(0, 1666, 1667)

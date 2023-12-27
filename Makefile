@@ -1,8 +1,18 @@
+REGISTRY ?= ghcr.io/philiplinden
 IMAGE ?= cremons-et-al-2022
-TAG ?= latest
+TAG ?= test
 
 build:
-	docker build . -t $(IMAGE):$(TAG)
+	docker build . -t  $(REGISTRY)/$(IMAGE):$(TAG)
+
+push: build
+	docker push $(REGISTRY)/$(IMAGE):$(TAG)
+
+pull:
+	docker pull $(REGISTRY)/$(IMAGE):$(TAG)
 
 run:
-	docker run -v $(PWD):"/opt" $(IMAGE):$(TAG) repro/main.py
+	docker run -v $(PWD):"/opt" $(REGISTRY)/$(IMAGE):$(TAG) repro/main.py
+
+bacalhau: pull
+	bacalhau docker run $(REGISTRY)/$(IMAGE):$(TAG) repro/main.py

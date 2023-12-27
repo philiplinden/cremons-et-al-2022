@@ -2,69 +2,13 @@
 
 Run this script to generate Figure 1.
 """
-
 # external modules
 from matplotlib import pyplot as plt
-import numpy as np
 import pandas as pd
-from pathlib import Path
 
-# local module for working with spectral data
-import spectra
-
-DEFAULT_DATA_DIR = Path('../data')
-
-
-def import_spectral_data(data_dir: Path | str = DEFAULT_DATA_DIR):
-    if isinstance(data_dir, str):
-        data_dir = Path(data_dir)
-
-    # Import reflectance spectra (processed to remove hydration and organics)
-    samples = {
-        'Mature Mare': data_dir / Path('Mare_70181_Spectra.txt'),
-        'Mature Highlands': data_dir / Path('Highlands_62231_Spectra.txt'),
-        'Pyroxene':
-        data_dir / Path('Apollo15Sample15555ReddishBrownPyroxeneB.txt'),
-        'Immature Mare': data_dir / Path('Mare_71061_Spectra.txt'),
-        'Immature Highlands': data_dir / Path('Highlands_61221_Spectra.txt'),
-    }
-
-    lab_spectra = []
-    for name, path in samples.items():
-        lab_spectra.append(
-            spectra.spectrum_from_file(path, name, header=2, delimiter='\t'))
-
-    endmember_spectra = pd.concat(lab_spectra, axis=1)
-
-    # Temperature of step-heating experiment in degrees Celsius
-    temperature = [650, 700, 750, 800]
-    # Total water measured from step-heating experiments in ppm
-    water_ppm = [1522, 762, 176, 22]
-
-    experiments = zip(temperature, water_ppm)
-
-    # Import observations of MORB step-wise heating reflectance spectra
-    imported_reflectances = []
-    for deg_c, ppm in experiments:
-        MORB_spectrum = spectra.spectrum_from_file(data_dir /
-                                                   Path(f"{deg_c}^oC.csv"),
-                                                   name=f'{ppm} ppm')
-        MORB_spectrum.index = 1e4 / MORB_spectrum.index  # 1/cm to microns
-        MORB_spectrum = MORB_spectrum / 100  # percent to decimal
-
-        # since we converted frequency to wavelength, need to resort data
-        MORB_spectrum = MORB_spectrum.sort_index()
-        imported_reflectances.append(MORB_spectrum)
-
-    heated_MORB_spectra = pd.concat(imported_reflectances, axis=1)
-
-    # Low wavelength portion of MORB spectrum (<1.5 microns)
-    MORB_D38A_LowLam = spectra.spectrum_from_file(
-        data_dir / Path("Morb_D38A_Low_wavelength.txt"),
-        name='MORB D38A low wavelengths',
-    )
-
-    return endmember_spectra, heated_MORB_spectra, MORB_D38A_LowLam
+import base
+from base import log
+import spectra  # local module for working with spectral data
 
 
 def normalize_to_wavelength(heated_MORB_spectra: pd.DataFrame,
@@ -75,6 +19,7 @@ def normalize_to_wavelength(heated_MORB_spectra: pd.DataFrame,
     normalized_spectra = pd.DataFrame()
     MORB_spectrum = pd.DataFrame()
     for spectrum in heated_MORB_spectra.columns:
+        log.info(f'Normalizing {spectrum} to {ppm} ppm at {micron} µm')
         MORB_spectrum = heated_MORB_spectra[spectrum]
 
         norm_factor = spectra.get_normalization_factor(MORB_spectrum, micron)
@@ -89,19 +34,23 @@ def simplify_spectra(heated_MORB_spectra: pd.DataFrame,
     # Normalize all MORB spectra to the reflectance at 2.6 microns at the
     # lowest water amount and highest temperature (22 ppm, 800 C)
     normalized_spectra, MORB_spectrum = normalize_to_wavelength(
-        heated_MORB_spectra)
+        heated_MORB_spectra, ppm=22, micron=2.6)
+
     # Replace spectrum below 2.6 micron with 650C reflectance
     # to isolate 3 micron feature changes and stitch in low wavelengths
+    log.info('Building simple mid spectrum between 1.6 µm and 2.6 µm')
     mid_spectrum = normalized_spectra['22 ppm'].loc[MORB_spectrum.index < 2.6]
     mid_spectrum = mid_spectrum.loc[mid_spectrum.index > 1.6]
 
     # normalize lower spectrum to meet up with the rest of the spectrum
+    log.info('Normalizing MORB D38A reflectance below 1.6 µm')
     stitch_factor = spectra.get_normalization_factor(mid_spectrum, 1.6) / \
                     spectra.get_normalization_factor(MORB_D38A_LowLam, 1.6)
     lower_spectrum = MORB_D38A_LowLam * stitch_factor
 
     simple_spectra = pd.DataFrame()
     for spectrum in normalized_spectra.columns:
+        log.info(f'Stitching together a spectrum for {spectrum} from parts')
         MORB_spectrum = normalized_spectra[spectrum]
         unified_spectrum = mid_spectrum.combine_first(lower_spectrum)
         upper_spectrum = normalized_spectra[spectrum].loc[
@@ -113,20 +62,10 @@ def simplify_spectra(heated_MORB_spectra: pd.DataFrame,
     return simple_spectra
 
 
-def interpolate_spectra(simple_spectra: pd.DataFrame):
-    # define wavelength range and spacing for simulations as
-    # 1-4 micron at 5nm intervals
-    WLS = np.linspace(1, 4, 601)
-
-    # interpolate along our sampling grid of interest
-    interpolated_spectra = simple_spectra.apply(
-        spectra.interpolate_along_series, args=[WLS], axis=0)
-
-    return interpolated_spectra
-
 def make_figure(endmember_spectra: pd.DataFrame,
                 interpolated_spectra: pd.DataFrame,
-                show: bool = True):
+                show: bool = False):
+    log.info('Building Figure 1...')
     fig, axes = plt.subplots(figsize=(20, 6), nrows=1, ncols=2)
 
     figure1a = endmember_spectra.plot(
@@ -149,8 +88,9 @@ def make_figure(endmember_spectra: pd.DataFrame,
         xlim=(1, 4),
     )
 
-    fig.savefig('Figure1.png')
-
+    figfile = 'repro/Figure1.png'
+    fig.savefig(figfile)
+    log.info(f'Saved {figfile}')
     if show:
         plt.show()
 
@@ -159,11 +99,11 @@ def make_figure(endmember_spectra: pd.DataFrame,
 
 def main():
     (endmember_spectra, heated_MORB_spectra,
-     MORB_D38A_LowLam) = import_spectral_data()
+     MORB_D38A_LowLam) = base.import_spectral_data()
 
     simple_spectra = simplify_spectra(heated_MORB_spectra, MORB_D38A_LowLam)
 
-    interpolated_spectra = interpolate_spectra(simple_spectra)
+    interpolated_spectra = spectra.interpolate_spectra(simple_spectra)
 
     make_figure(endmember_spectra, interpolated_spectra)
 
